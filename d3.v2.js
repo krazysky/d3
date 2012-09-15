@@ -5709,7 +5709,7 @@
           layout.outX = outX;
           layout.outY = outY;
         } else {
-          layout.outR = d.value || 10;
+          layout.outR = node.value || 10;
         }
       }
       function secondWalk(node, offX, offY, theta) {

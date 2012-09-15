@@ -121,7 +121,7 @@ d3.layout.balloon = function() {
         layout.outY = outY;
       } else {
         // stuff that leaf nodes need to do
-        layout.outR = d.value || 10;
+        layout.outR = node.value || 10;
       }
     }
 
