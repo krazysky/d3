@@ -177,6 +177,7 @@ d3.layout.js: \
 	src/layout/hierarchy.js \
 	src/layout/pack.js \
 	src/layout/cluster.js \
+	src/layout/balloon.js \
 	src/layout/tree.js \
 	src/layout/treemap.js
 

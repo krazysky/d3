@@ -1728,6 +1728,9 @@
     var children = node.children, n;
     return children && (n = children.length) ? d3_layout_clusterRight(children[n - 1]) : node;
   }
+  function d3_layout_balloonGap(d) {
+    return 0;
+  }
   function d3_layout_treeSeparation(a, b) {
     return a.parent == b.parent ? 1 : 2;
   }
@@ -5639,6 +5642,133 @@
       return cluster;
     };
     return d3_layout_hierarchyRebind(cluster, hierarchy);
+  };
+  d3.layout.balloon = function() {
+    function balloon(d, i) {
+      function firstWalk(node) {
+        var children = node.children, layout = node._balloon, gap = node.parent ? gapper(node) : 0;
+        if (children && (n = children.length)) {
+          var n, child, childLayout, i;
+          i = -1;
+          while (++i < n) firstWalk(children[i]);
+          var childOutR, maxChildOutR = 0, sumOfChildOutRs = 0;
+          i = -1;
+          while (++i < n) {
+            childOutR = children[i]._balloon.outR;
+            maxChildOutR = Math.max(childOutR, maxChildOutR);
+            sumOfChildOutRs += childOutR;
+          }
+          var inR;
+          if (sumOfChildOutRs < Pi * maxChildOutR) {
+            inR = maxChildOutR + maxChildOutR / Pi;
+          } else {
+            inR = sumOfChildOutRs / Pi + maxChildOutR;
+          }
+          var inC, gapAngle;
+          inC = TwoPi * inR + gap;
+          inR = inC / TwoPi;
+          gapAngle = gap / inR;
+          var childAlpha, sumOfAlphas = 0;
+          i = -1;
+          while (++i < n) {
+            childLayout = children[i]._balloon;
+            childAlpha = Math.atan(childLayout.outR / inR);
+            childLayout.alpha = childAlpha;
+            sumOfAlphas += childAlpha;
+          }
+          var freeArc = 2 * (Pi - sumOfAlphas - gapAngle) / n;
+          var theta = gapAngle - freeArc / 2, lastAlpha = 0, x = 0, y = 0, xMin = Infinity, yMin = Infinity, xMax = -Infinity, yMax = -Infinity;
+          i = -1;
+          while (++i < n) {
+            childLayout = children[i]._balloon;
+            childAlpha = childLayout.alpha;
+            theta += lastAlpha + childAlpha + freeArc;
+            childLayout.relX = x = inR * Math.cos(theta);
+            childLayout.relY = y = inR * Math.sin(theta);
+            childLayout.theta = theta;
+            lastAlpha = childAlpha;
+            childOutR = childLayout.outR;
+            xMin = Math.min(x - childOutR, xMin);
+            yMin = Math.min(y - childOutR, yMin);
+            xMax = Math.max(x + childOutR, xMax);
+            yMax = Math.max(y + childOutR, yMax);
+          }
+          var outX = (xMin + xMax) / 2;
+          var outY = (yMin + yMax) / 2;
+          var outR = 0, dX, dY;
+          i = -1;
+          while (++i < n) {
+            childLayout = children[i]._balloon;
+            childOutR = childLayout.outR;
+            childLayout.relX = dX = childLayout.relX - outX;
+            childLayout.relY = dY = childLayout.relY - outY;
+            outR = Math.max(Math.sqrt(dX * dX + dY * dY) + childOutR, outR);
+          }
+          layout.inR = inR;
+          layout.outR = outR;
+          layout.outX = outX;
+          layout.outY = outY;
+        } else {
+          layout.outR = d.value || 10;
+        }
+      }
+      function secondWalk(node, offX, offY, theta) {
+        var children = node.children, layout = node._balloon, centerX, centerY, sinTheta = Math.sin(theta), cosTheta = Math.cos(theta), x, y, _x, _y;
+        node.r = layout.outR * scaleF;
+        _x = layout.relX * scaleF;
+        _y = layout.relY * scaleF;
+        x = _x * cosTheta - _y * sinTheta;
+        y = _x * sinTheta + _y * cosTheta;
+        node.x = centerX = x + offX;
+        node.y = centerY = y + offY;
+        theta += layout.theta + Orientation;
+        sinTheta = Math.sin(theta);
+        cosTheta = Math.cos(theta);
+        _x = -layout.outX * scaleF;
+        _y = -layout.outY * scaleF;
+        x = _x * cosTheta - _y * sinTheta;
+        y = _x * sinTheta + _y * cosTheta;
+        node.lx = centerX + x;
+        node.ly = centerY + y;
+        if (children && (n = children.length)) {
+          var n, i;
+          i = -1;
+          while (++i < n) secondWalk(children[i], centerX, centerY, theta);
+        }
+      }
+      var Pi = Math.PI;
+      TwoPi = 2 * Pi, Orientation = Pi, scaleF = 1, nodes = hierarchy.call(this, d, i), root = nodes[0];
+      d3_layout_treeVisitAfter(root, function(node) {
+        node._balloon = {
+          inR: 0,
+          outR: 0,
+          outX: 0,
+          outY: 0,
+          relX: 0,
+          relY: 0,
+          theta: 0
+        };
+      });
+      firstWalk(root, 0);
+      scaleF = Math.min(size[0], size[1]) / (root._balloon.outR * 2);
+      secondWalk(root, 0, 0, 0);
+      d3_layout_treeVisitAfter(root, function(node) {
+        delete node._balloon;
+      });
+      return nodes;
+    }
+    var hierarchy = d3.layout.hierarchy().sort(null), size = [ 1, 1 ], gapper = d3_layout_balloonGap;
+    balloon.size = function(x) {
+      if (!arguments.length) return size;
+      size = x;
+      return balloon;
+    };
+    balloon.gap = function(x) {
+      if (!arguments.length) return gapper;
+      gapper = d3.functor(x);
+      return balloon;
+    };
+    return d3_layout_hierarchyRebind(balloon, hierarchy);
   };
   d3.layout.tree = function() {
     function tree(d, i) {
