@@ -4,7 +4,7 @@ d3.layout.balloon = function() {
       gapper = d3_layout_balloonGap;
 
   function balloon(d, i) {
-    var Pi = Math.PI;
+    var Pi = Math.PI,
         TwoPi = 2 * Pi,
         Orientation = Pi,
         scaleF = 1, // scaling factor in between the two walks
