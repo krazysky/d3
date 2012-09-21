@@ -211,6 +211,7 @@ d3.layout.balloon = function() {
     return balloon;
   };
 
+  d3.rebind(balloon, hierarchy, "revalue");
   return d3_layout_hierarchyRebind(balloon, hierarchy);
 };
 
